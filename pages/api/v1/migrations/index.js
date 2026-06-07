@@ -3,10 +3,7 @@ import { join } from "node:path";
 import database from "infra/database";
 
 export default async function migrations(request, response) {
-  const dbClient = await database.getNewClient();
-
   const defaultMigrationOptions = {
-    dbClient: dbClient,
     dryRun: true,
     dir: join("infra", "migrations"),
     direction: "up",
@@ -15,15 +12,21 @@ export default async function migrations(request, response) {
   };
 
   if (request.method === "GET") {
-    const pendingMigrations = await migrationRunner(defaultMigrationOptions);
+    const dbClient = await database.getNewClient();
+    const pendingMigrations = await migrationRunner({
+      ...defaultMigrationOptions,
+      dbClient: dbClient,
+    });
     response.status(200).json(pendingMigrations);
     await dbClient.end();
   }
 
   if (request.method === "POST") {
+    const dbClient = await database.getNewClient();
     const migratedMigrations = await migrationRunner({
       ...defaultMigrationOptions,
       dryRun: false,
+      dbClient: dbClient,
     });
 
     await dbClient.end();
